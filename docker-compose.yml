@@ -1,0 +1,45 @@
+version: '3.6'
+
+
+
+services:
+  nats-server:
+    command:
+      - "-p"
+      - "4222"
+      - "-m"
+      - "8222"
+      - "-js"
+      - "-c"
+      - "./nats.conf"
+    ports:
+      - 4222:4222
+      - 8222:8222
+      - 9090:9090
+    image: nats:latest
+    volumes:
+      - ./nats.conf:/nats.conf
+  back-end-app:
+    volumes:
+      - ./panini_microservice_template/app:/app/app
+      - ./panini_microservice_template/config:/app/config # add configs if required
+      - ./panini_microservice_template/environments:/app/environments
+    build:
+      context: ./panini_microservice_template
+      dockerfile: Dockerfile
+    command: >
+      sh -c "python -m app.main"
+    depends_on:
+      - nats-server
+    env_file:
+      - panini_microservice_template/environments/.env.container
+  frontend-app:
+    build:
+      context: ./nats-frontend-app
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - nats-server
